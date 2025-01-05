@@ -6,7 +6,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import (QCoreApplication, QPropertyAnimation, QDate, QDateTime, QMetaObject, QObject, QPoint, QRect, QSize, QTime, QUrl, Qt, QEvent)
 from PyQt5.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont, QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, QPainter, QPixmap, QRadialGradient)
 from PyQt5.QtWidgets import *
-
+import sqlite3
+from sqlite3 import OperationalError
+import os.path 
 # Import user interface file
 from ui_main_window import *
 
@@ -17,7 +19,7 @@ from flowlayout4 import FlowLayout
 # IMPORT FUNCTIONS
 from ui_functions import *
 # Global value for the windows status
-import sqlite3
+
 x_userid = 0;
 active_note_id=None
 WINDOW_SIZE = 0;
@@ -160,13 +162,6 @@ class MainWindow(QMainWindow):
 
         self.scroll_area.setWidget(self.scroll_content)
 
-        # Notları ekle
-        #self.add_notes()
-
-        # Sayfayı aktif yap
-        #self.stacked_widget.setCurrentWidget(self.notes_page)
-
-        #---------------------------
         self.login=False
         self.ui.left_menu_notes.hide()
         
@@ -216,20 +211,12 @@ class MainWindow(QMainWindow):
         self.ui.main_header.mouseMoveEvent = moveWindow
         # ###############################################
 
-
-
-
-
-
         # SLIDABLE LEFT MENU/////////////////
         #Left Menu toggle button
         self.ui.left_menu_toggle_btn.clicked.connect(lambda: self.slideLeftMenu())
         # ###############################################
         # //////////////////////////////////////
         #self.ui.left_menu_toggle_btn.clicked.connect(lambda: self.toggleMenu(150, True))
-
-
-
 
         # STACKED PAGES (DEFAUT /CURRENT PAGE)/////////////////
         #Set the page that will be visible by default when the app is opened 
@@ -242,23 +229,33 @@ class MainWindow(QMainWindow):
 
         #navigate to Home page
         self.ui.home_button.clicked.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.ui.home_page))
-        
-
         #navigate to Accounts page
         self.ui.accounts_button.clicked.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.ui.login_page))
-            
+        #navigate to Register page   
         self.ui.Login_reg.clicked.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.ui.register_page))
+        #navigate to Login page 
         self.ui.Reg_login.clicked.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.ui.login_page))
         #navigate to Settings page
+        # self.ui.settings_button.clicked.connect(lambda: self.widgetler())
+
+
+
+        self.stacked_widget = QStackedWidget()
+        self.layout.addWidget(self.stacked_widget)
+
+
+        self.create_settings_page()
+
         self.ui.settings_button.clicked.connect(lambda: self.widgetler())
         #lambda: self.ui.stackedWidget.setCurrentWidget(self.ui.settings_page))
         self.ui.logoutBtn.clicked.connect(lambda: self.logoutUser())
         #navigate to Notes_page
         self.ui.notes_button.clicked.connect(lambda: self.load_notes())
+        #navigate to UserPassword Change page
         self.ui.changepassword_Btn.clicked.connect(lambda: self.UserChangePassword())
         #DB Connection..
         self.db_baglan()
-        self.setup_database()
+        
         
 
 
@@ -275,7 +272,12 @@ class MainWindow(QMainWindow):
         self.ui.newnote_save.clicked.connect(lambda:self.save_note(x_userid))
         # ############################################
         # Show window
-        self.show()
+        if self.setup_database():
+            self.show()
+        else:
+            self.close()
+            self.exit()
+        
         # ###############################################
 
 
@@ -328,18 +330,42 @@ class MainWindow(QMainWindow):
         self.clickPosition = event.globalPos()
         # We will use this value to move the window
         # ###############################################
+    def executeScriptsFromFile(self,filename):
+        import sqlite3
+        from sqlite3 import OperationalError
+        # Open and read the file as a single buffer
+        fd = open(filename, 'r')
+        sqlFile = fd.read()
+        fd.close()
+
+        # all SQL commands (split on ';')
+        sqlCommands = sqlFile.split(';')
+        conn = sqlite3.connect("notes.db")
+        c = conn.cursor()
+        # Execute every command from the input file
+        for command in sqlCommands:
+            # This will skip and report errors
+            # For example, if the tables do not yet exist, this will skip over
+            # the DROP TABLE commands
+            try:
+                c.execute(command)
+            except OperationalError as msg:
+                print("Command skipped: ", msg)
     def setup_database(self):
-        try:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT)")
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, title TEXT, content TEXT, priority INTEGER DEFAULT 3, date TEXT)")
-            self.db_connection.commit()
-            
-        except sqlite3.Error as e:
-            QtWidgets.QMessageBox.critical(self, "Veritabanı Hatası", f"Veritabanı oluşturulurken bir hata oluştu: {e}")
+        
+        import os.path 
+        path=os.path.dirname(os.path.realpath(__file__))
+        path=os.path.join(path, "notes.sql")
+        check_file = os.path.isfile(path)
+        #print(path)
+        #print(check_file)
+        if check_file:
+            self.executeScriptsFromFile(path)
+        else:
+            QtWidgets.QMessageBox.information(self, "Error", "Database SQL file not found!")
+        return check_file
     def mesajhide(self):
         self.ui.frame_error.hide()
-   
-
     def db_baglan(self):
         
         self.db_connection = sqlite3.connect("notes.db")
@@ -407,7 +433,7 @@ class MainWindow(QMainWindow):
             self.load_notes()
             self.ui.stackedWidget.setCurrentWidget(self.ui.notes_page)
         else:
-            QtWidgets.QMessageBox.warning(self, "Hata", "Kullanıcı adı veya şifre hatalı!")
+            QtWidgets.QMessageBox.warning(self, "Error", "Username or password is incorrect!")
     def logoutUser(self):
         self.login=False
         self.ui.left_menu_notes.hide()
@@ -529,7 +555,24 @@ class MainWindow(QMainWindow):
             self.ui.note_content.document().setPlainText(note[2])
             
             self.ui.stackedWidget.setCurrentWidget(self.ui.newnote_page) 
-         
+
+
+
+
+
+    def widgetler(self):
+        # Navigate to the Settings page
+        self.stacked_widget.setCurrentIndex(2) 
+
+
+
+    def create_settings_page(self):
+        settings_page = QWidget()
+        layout = QVBoxLayout(settings_page)
+        layout.addWidget(QLabel("Settings Page"))
+        self.stacked_widget.addWidget(settings_page)
+
+
     def save_note(self,userid):
         global active_note_id
         content = self.ui.note_content.document().toPlainText()
@@ -661,7 +704,7 @@ if __name__ == "__main__":
     window = MainWindow()
     sys.exit(app.exec_())
 else:
-	print(__name__, "hh")
+    print(__name__, "hh")
 
 # press ctrl+b in sublime to run
 
