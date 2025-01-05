@@ -1422,7 +1422,7 @@ class Ui_MainWindow(object):
         self.label_error.setText(_translate("MainWindow", "Error"))
         self.loggedUser.setPlaceholderText(_translate("MainWindow", "USER"))
         self.logoutBtn.setText(_translate("MainWindow", "L O G  O U T"))
-        self.changepasBtn.setText(_translate("MainWindow", "Cahnge Password"))
+        self.changepasBtn.setText(_translate("MainWindow", "Change Password"))
         self.user_id.setText(_translate("MainWindow", "TextLabel"))
         self.label_error_4.setText(_translate("MainWindow", "USER LOGGED IN"))
         self.loggedUser_chpass.setPlaceholderText(_translate("MainWindow", "USER"))
