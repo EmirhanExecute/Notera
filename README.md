@@ -7,7 +7,7 @@ pip install -r requirements.txt
 3. Run the program: Execute the main Python file to start the program:
 python main.py
 
-project-name/
+Notera/
 │
 ├── __pycache__/           # Compiled Python bytecode
 ├── app_functions/         # Contains utility functions for the application
